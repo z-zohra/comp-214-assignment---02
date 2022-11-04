@@ -1,0 +1,249 @@
+-- ASSIGNMENT 03 COMP 214
+--PL/SQL
+
+-- 4-8
+
+DECLARE 
+    new_sal NUMBER; 
+    old_anum_sal number; 
+    new_anum_sal_raise number; 
+    new_anum_sal number; 
+    total_cost number; 
+-- create cursor for fetching all data from the table 'employee'  
+cursor c1 is SELECT * FROM employee; 
+BEGIN     
+   total_cost := 0;     
+   dbms_output.put_line( 'EMPNO |' || 'EmpName | ' || 'OldSal | ' || 'Raise |' || 'NewSal');     
+   dbms_output.put_line( '---------------------------------------' );
+   
+   FOR emp in c1    
+   LOOP        
+       
+      new_sal := ((emp.SAL/100)*6)*12;         
+          
+      old_anum_sal := emp.SAL*12;         
+             
+      IF new_sal > 2000 THEN            
+               
+      new_anum_sal_raise := 2000;         
+      ELSE             
+      new_anum_sal_raise := new_sal;         
+      END IF;         
+            
+      IF emp.JOB != 'PRESIDENT' THEN             
+      new_anum_sal := old_anum_sal + new_anum_sal_raise;         
+      ELSE              
+      new_anum_sal := old_anum_sal;             
+      new_anum_sal_raise := 0;         
+      END IF;         
+             
+      total_cost := total_cost + new_anum_sal;        
+              
+      dbms_output.put_line( emp.EMPNO || '  |  ' || emp.ENAME || '  |  '  || old_anum_sal || ' | ' || new_anum_sal_raise || ' | ' ||new_anum_sal);     
+      END LOOP;     
+      dbms_output.put_line( '---------------------------------------' );     
+        
+      dbms_output.put_line( 'Total cost of all employees | ' || total_cost ); 
+      END;
+
+-- 4-9 USING AN EXPLICIT CURSOR
+
+DECLARE 
+CURSOR donors_pledge_info  is
+SELECT  PL.idDonor ,PL.Pledgeamt ,PL.paymonths ,PA.Paydate,PA.Payamt,pl.firstpledge
+
+FROM  DD_Donor  D  ,DD_Pledge PL , DD_Payment PA
+
+WHERE D.idDonor =PL.idDonor AND PL.idPledge =PA.idPledge 
+
+ORDER BY PL.IDPLEDGE,PA.PAYDATE;
+
+TYPE TYPE_PLEDGE IS RECORD(
+did          DD_Pledge.idDonor %type,
+
+plamt      DD_Pledge.Pledgeamt %type,
+
+plpmnth   DD_Pledge.paymonths %type,
+
+pdate      DD_Payment.Paydate%type,
+
+pmnth     DD_Payment.Payamt %type,
+firstpledge DD_PLEDGE.FIRSTPLEDGE %type); 
+REC_PLEDGE TYPE_PLEDGE;
+BEGIN
+
+   OPEN donors_pledge_info;
+
+   LOOP
+
+   FETCH donors_pledge_info  into  REC_PLEDGE;
+
+      EXIT WHEN donors_pledge_info %notfound;
+    if(REC_PLEDGE.firstpledge = 'Y') THEN 
+          dbms_output.put_line(REC_PLEDGE.did || ' ' || REC_PLEDGE.plamt || ' ' || REC_PLEDGE.plpmnth || ' ' || REC_PLEDGE.pdate || ' ' || REC_PLEDGE.pmnth || ' ' || 'First payment');
+    ELSE
+          dbms_output.put_line(REC_PLEDGE.did || ' ' || REC_PLEDGE.plamt || ' ' || REC_PLEDGE.plpmnth || ' ' || REC_PLEDGE.pdate || ' ' || REC_PLEDGE.pmnth);
+    end if;
+   END LOOP;
+
+   CLOSE donors_pledge_info;
+
+END;
+
+
+--4-10
+
+create or replace function get_pledge(flag boolean)
+return sys_refcursor as  donors_pledge_info sys_refcursor; 
+BEGIN
+  Open donors_pledge_info for 
+  SELECT  PL.idDonor ,PL.Pledgeamt ,PL.paymonths ,PA.Paydate,PA.Payamt,pl.firstpledge
+
+FROM  DD_Donor  D  ,DD_Pledge PL , DD_Payment PA
+
+WHERE D.idDonor =PL.idDonor AND PL.idPledge =PA.idPledge 
+
+ORDER BY PL.IDPLEDGE,PA.PAYDATE;
+return donors_pledge_info;
+end;
+DECLARE
+   flag boolean :=  true;
+   
+   donors_pledge_info sys_refcursor;
+   did          DD_Pledge.idDonor %type;
+
+plamt      DD_Pledge.Pledgeamt %type;
+
+plpmnth   DD_Pledge.paymonths %type;
+
+pdate      DD_Payment.Paydate%type;
+
+pmnth     DD_Payment.Payamt %type;
+firstpledge DD_PLEDGE.FIRSTPLEDGE %type;
+BEGIN
+    donors_pledge_info := get_pledge(flag);
+    LOOP
+    FETCH
+    donors_pledge_info into did,plamt, plpmnth,pdate, pmnth, firstpledge;
+    EXIT
+    WHEN donors_pledge_info%notfound;
+    if(firstpledge = 'Y') THEN 
+           dbms_output.put_line(did || ' ' || plamt || ' ' || plpmnth || ' ' ||pdate || ' ' || pmnth || ' ' || 'First payment');
+    ELSE
+           dbms_output.put_line(did || ' ' || plamt || ' ' || plpmnth || ' ' ||pdate || ' ' || pmnth );
+    end if;
+   
+    END LOOP;
+    CLOSE donors_pledge_info;
+END;
+   
+
+
+-- 4-11
+
+DECLARE
+     CURSOR donorCursor(TypeCode VARCHAR2, PledgeAmt NUMBER) IS
+        SELECT d.IDDONOR,d.FIRSTNAME,d.LASTNAME,p.PLEDGEAMT
+        FROM DD_DONOR d,DD_PLEDGE p
+        WHERE d.IDDONOR = p.IDDONOR
+        AND d.TYPECODE = TypeCode
+        AND p.PLEDGEAMT >PledgeAmt
+        ORDER by 2;
+    BEGIN
+ 
+     FOR idx in donorCursor("I",5000) LOOP
+       dbms_output.put_line(idx.IDDONOR||' '||rpad(idx.FIRSTNAME,20,' ')||' '||
+       rpad(idx.LASTNAME,30,' ')||' 'idx.PLEDGEAMT);
+     END LOOP;
+      
+      FOR idx in donorCursor("B",6000) LOOP
+       dbms_output.put_line(idx.IDDONOR||' '||rpad(idx.FIRSTNAME,20,' ')||' '||
+       rpad(idx.LASTNAME,30,' ')||' 'idx.PLEDGEAMT);
+     END LOOP;
+     
+   END;
+   
+-- 4-12 
+  
+DECLARE
+     v_indicator CHAR(1) := 'D';     
+     v_donorid NUMBER(5) := 308;    
+     v_idpay dd_payment.idpay%type;     
+     v_idpledge dd_payment.idpledge%type;     
+     v_payamt dd_payment.payamt%type;     
+     v_paydate dd_payment.paydate%type;     
+     v_paymethod dd_payment.paymethod%type;     
+     v_sum_payamt dd_payment.payamt%type;     
+     v_records SYS_REFCURSOR;       
+BEGIN      
+     IF v_indicator = 'D' then                 
+         Open v_records For select idpay, idpledge ,payamt, paydate, paymethod 
+         from dd_payment          
+         where idpledge in
+         (select idpledge from dd_pledge where iddonor = v_donorid);          
+         Loop              
+            Fetch v_records into v_idpay, v_idpledge, v_payamt,v_paydate,v_paymethod;              
+            Exit when v_records%NOTFOUND;                  
+                dbms_output.put_line(v_idpay || ' ' || v_idpledge || ' ' || v_payamt || ' ' || v_paydate || ' ' || v_paymethod);          
+         End Loop;         
+         close v_records;     
+         ElsIF v_indicator = 'S' then       
+            Open v_records 
+            For select idpledge,sum(payamt) from dd_payment  	    
+            where idpledge in(select idpledge from dd_pledge where iddonor = v_donorid) group by idpledge;   		
+            Loop  			
+               Fetch v_records into v_idpledge, v_sum_payamt;
+               Exit when v_records%NOTFOUND;  			    
+               dbms_output.put_line(v_idpledge || ' ' || v_sum_payamt);  		
+            End Loop;          
+            Close v_records;     
+     END IF;
+END;  
+DECLARE
+     v_indicator CHAR(1) := 'S';     
+     v_donorid NUMBER(5) := 308;    
+     v_idpay dd_payment.idpay%type;     
+     v_idpledge dd_payment.idpledge%type;     
+     v_payamt dd_payment.payamt%type;     
+     v_paydate dd_payment.paydate%type;     
+     v_paymethod dd_payment.paymethod%type;     
+     v_sum_payamt dd_payment.payamt%type;     
+     v_records SYS_REFCURSOR;       
+BEGIN      
+     IF v_indicator = 'D' then                 
+         Open v_records For select idpay, idpledge ,payamt, paydate, paymethod 
+         from dd_payment          
+         where idpledge in
+         (select idpledge from dd_pledge where iddonor = v_donorid);          
+         Loop              
+            Fetch v_records into v_idpay, v_idpledge, v_payamt,v_paydate,v_paymethod;              
+            Exit when v_records%NOTFOUND;                  
+                dbms_output.put_line(v_idpay || ' ' || v_idpledge || ' ' || v_payamt || ' ' || v_paydate || ' ' || v_paymethod);          
+         End Loop;         
+         close v_records;     
+         ElsIF v_indicator = 'S' then       
+            Open v_records For select idpledge,sum(payamt) from dd_payment  	    
+            where idpledge in(select idpledge from dd_pledge where iddonor = v_donorid) group by idpledge;   		
+            Loop  			
+               Fetch v_records into v_idpledge, v_sum_payamt;
+               Exit when v_records%NOTFOUND;  			    
+               dbms_output.put_line(v_idpledge || ' ' || v_sum_payamt);  		
+            End Loop;          
+            Close v_records;     
+     END IF;
+END;
+
+-- 4-13
+
+DECLARE
+   ex_id_pk 
+EXCEPTION;
+   
+BEGIN
+   UPDATE dd_donor
+   SET iddonor = 310
+   WHERE iddonor = 305;
+   EXCEPTION 
+   WHEN dup_val_on_index THEN
+   DBMS_OUTPUT.PUT_LINE('This ID is already assigned.');
+END;
